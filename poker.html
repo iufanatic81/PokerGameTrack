@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker Game Payment Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        .payment-card {
+            transition: all 0.3s ease;
+        }
+        
+        .payment-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-paid {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .status-pending {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        
+        .total-display {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">🃏 Poker Payment Tracker</h1>
+            <p class="text-gray-300">Keep track of digital payments from your poker players</p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="total-display text-white p-4 rounded-xl shadow-lg">
+                <div class="text-center">
+                    <div class="text-2xl font-bold" id="totalCollected">$0</div>
+                    <div class="text-blue-200 text-sm">Collected</div>
+                </div>
+            </div>
+            <div class="bg-red-600 text-white p-4 rounded-xl shadow-lg">
+                <div class="text-center">
+                    <div class="text-2xl font-bold" id="totalPaidOut">$0</div>
+                    <div class="text-red-200 text-sm">Paid Out</div>
+                </div>
+            </div>
+            <div class="bg-green-600 text-white p-4 rounded-xl shadow-lg">
+                <div class="text-center">
+                    <div class="text-2xl font-bold" id="netPosition">$0</div>
+                    <div class="text-green-200 text-sm">Net Position</div>
+                </div>
+            </div>
+            <div class="bg-orange-600 text-white p-4 rounded-xl shadow-lg">
+                <div class="text-center">
+                    <div class="text-2xl font-bold" id="pendingCount">0</div>
+                    <div class="text-orange-200 text-sm">Pending</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add New Player -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Add New Player</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <input type="text" id="playerName" placeholder="Player Name" 
+                       class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <input type="number" id="buyInAmount" placeholder="Buy-in Amount" 
+                       class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <select id="paymentMethod" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Payment Method</option>
+                    <option value="Venmo">Venmo</option>
+                    <option value="Zelle">Zelle</option>
+                    <option value="PayPal">PayPal</option>
+                    <option value="CashApp">Cash App</option>
+                    <option value="Apple Pay">Apple Pay</option>
+                    <option value="Cash">Cash</option>
+                </select>
+                <button onclick="addPlayer()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                    Add Player
+                </button>
+            </div>
+        </div>
+
+        <!-- Record Payout -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Record Payout to Winner</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input type="text" id="winnerName" placeholder="Winner Name" 
+                       class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <input type="number" id="payoutAmount" placeholder="Payout Amount" 
+                       class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <button onclick="addPayout()" 
+                        class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                    Record Payout
+                </button>
+            </div>
+        </div>
+
+        <!-- Players List -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Players & Payments</h2>
+            <div id="playersList" class="space-y-4">
+                <div class="text-center text-gray-500 py-8">
+                    No players added yet. Add your first player above!
+                </div>
+            </div>
+        </div>
+
+        <!-- Payouts List -->
+        <div class="bg-white rounded-xl shadow-lg p-6" id="payoutsSection" style="display: none;">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Payouts to Winners</h2>
+            <div id="payoutsList" class="space-y-4">
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="mt-8 text-center">
+            <button id="clearDataBtn" 
+                    class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors mr-4">
+                Clear All Data
+            </button>
+            <button id="exportDataBtn" 
+                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                Export Summary
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let players = JSON.parse(localStorage.getItem('pokerPlayers')) || [];
+        let payouts = JSON.parse(localStorage.getItem('pokerPayouts')) || [];
+
+        function addPlayer() {
+            const name = document.getElementById('playerName').value.trim();
+            const amount = parseFloat(document.getElementById('buyInAmount').value);
+            const method = document.getElementById('paymentMethod').value;
+
+            if (!name || !amount || amount <= 0) {
+                alert('Please enter a valid player name and buy-in amount');
+                return;
+            }
+
+            const player = {
+                id: Date.now(),
+                name: name,
+                amount: amount,
+                paymentMethod: method || 'Not specified',
+                status: 'pending',
+                timestamp: new Date().toLocaleString()
+            };
+
+            players.push(player);
+            saveData();
+            renderPlayers();
+            clearForm();
+        }
+
+        function togglePaymentStatus(playerId) {
+            const player = players.find(p => p.id === playerId);
+            if (player) {
+                player.status = player.status === 'pending' ? 'paid' : 'pending';
+                if (player.status === 'paid') {
+                    player.paidTimestamp = new Date().toLocaleString();
+                }
+                saveData();
+                renderPlayers();
+            }
+        }
+
+        function removePlayer(playerId) {
+            if (confirm('Are you sure you want to remove this player?')) {
+                players = players.filter(p => p.id !== playerId);
+                saveData();
+                renderPlayers();
+            }
+        }
+
+        function addPayout() {
+            const name = document.getElementById('winnerName').value.trim();
+            const amount = parseFloat(document.getElementById('payoutAmount').value);
+
+            if (!name || !amount || amount <= 0) {
+                alert('Please enter a valid winner name and payout amount');
+                return;
+            }
+
+            const payout = {
+                id: Date.now(),
+                name: name,
+                amount: amount,
+                timestamp: new Date().toLocaleString()
+            };
+
+            payouts.push(payout);
+            saveData();
+            renderPayouts();
+            clearPayoutForm();
+        }
+
+        function removePayout(payoutId) {
+            if (confirm('Are you sure you want to remove this payout?')) {
+                payouts = payouts.filter(p => p.id !== payoutId);
+                saveData();
+                renderPayouts();
+            }
+        }
+
+        function clearPayoutForm() {
+            document.getElementById('winnerName').value = '';
+            document.getElementById('payoutAmount').value = '';
+        }
+
+        function renderPlayers() {
+            const container = document.getElementById('playersList');
+            
+            if (players.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        No players added yet. Add your first player above!
+                    </div>
+                `;
+                updateSummary();
+                return;
+            }
+
+            container.innerHTML = players.map(player => `
+                <div class="payment-card border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${player.status === 'paid' ? 'status-paid' : 'status-pending'}">
+                            ${player.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gray-800">${player.name}</div>
+                            <div class="text-sm text-gray-600">
+                                $${player.amount.toFixed(2)} • ${player.paymentMethod}
+                                ${player.status === 'paid' && player.paidTimestamp ? ` • Paid: ${player.paidTimestamp}` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="togglePaymentStatus(${player.id})" 
+                                class="px-4 py-2 rounded-lg font-medium transition-colors ${player.status === 'paid' ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-orange-100 text-orange-800 hover:bg-orange-200'}">
+                            ${player.status === 'paid' ? '✓ Paid' : '⏳ Pending'}
+                        </button>
+                        <button onclick="removePlayer(${player.id})" 
+                                class="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            updateSummary();
+        }
+
+        function renderPayouts() {
+            const container = document.getElementById('payoutsList');
+            const section = document.getElementById('payoutsSection');
+            
+            if (payouts.length === 0) {
+                section.style.display = 'none';
+                updateSummary();
+                return;
+            }
+
+            section.style.display = 'block';
+            container.innerHTML = payouts.map(payout => `
+                <div class="payment-card border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center text-white font-bold text-lg">
+                            ${payout.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gray-800">${payout.name}</div>
+                            <div class="text-sm text-gray-600">
+                                Paid out $${payout.amount.toFixed(2)} • ${payout.timestamp}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                            -$${payout.amount.toFixed(2)}
+                        </span>
+                        <button onclick="removePayout(${payout.id})" 
+                                class="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const totalCollected = players.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
+            const totalPaidOut = payouts.reduce((sum, p) => sum + p.amount, 0);
+            const netPosition = totalCollected - totalPaidOut;
+            const pendingCount = players.filter(p => p.status === 'pending').length;
+
+            document.getElementById('totalCollected').textContent = `$${totalCollected.toFixed(2)}`;
+            document.getElementById('totalPaidOut').textContent = `$${totalPaidOut.toFixed(2)}`;
+            document.getElementById('netPosition').textContent = `$${netPosition.toFixed(2)}`;
+            document.getElementById('pendingCount').textContent = pendingCount;
+        }
+
+        function clearForm() {
+            document.getElementById('playerName').value = '';
+            document.getElementById('buyInAmount').value = '';
+            document.getElementById('paymentMethod').value = '';
+        }
+
+        function saveData() {
+            localStorage.setItem('pokerPlayers', JSON.stringify(players));
+            localStorage.setItem('pokerPayouts', JSON.stringify(payouts));
+        }
+
+        function clearAllData() {
+            if (confirm('Are you sure you want to clear all data (players and payouts)? This cannot be undone.')) {
+                players = [];
+                payouts = [];
+                localStorage.removeItem('pokerPlayers');
+                localStorage.removeItem('pokerPayouts');
+                renderPlayers();
+                renderPayouts();
+                updateSummary();
+                alert('All data has been cleared successfully!');
+            }
+        }
+
+        function exportData() {
+            const playerSummary = players.map(p => 
+                `${p.name}: $${p.amount.toFixed(2)} (${p.paymentMethod}) - ${p.status.toUpperCase()}`
+            ).join('\n');
+            
+            const payoutSummary = payouts.map(p => 
+                `${p.name}: -$${p.amount.toFixed(2)} (${p.timestamp})`
+            ).join('\n');
+            
+            const totalCollected = players.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
+            const totalPending = players.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
+            const totalPaidOut = payouts.reduce((sum, p) => sum + p.amount, 0);
+            const netPosition = totalCollected - totalPaidOut;
+            
+            const fullSummary = `POKER GAME FINANCIAL SUMMARY\n` +
+                               `Generated: ${new Date().toLocaleString()}\n\n` +
+                               `PLAYERS & BUY-INS:\n${playerSummary || 'No players added'}\n\n` +
+                               `PAYOUTS TO WINNERS:\n${payoutSummary || 'No payouts recorded'}\n\n` +
+                               `FINANCIAL SUMMARY:\n` +
+                               `Money Collected: $${totalCollected.toFixed(2)}\n` +
+                               `Money Paid Out: $${totalPaidOut.toFixed(2)}\n` +
+                               `Net Position: $${netPosition.toFixed(2)}\n` +
+                               `Still Pending: $${totalPending.toFixed(2)}`;
+
+            // Try to download, fallback to copy to clipboard
+            try {
+                const blob = new Blob([fullSummary], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `poker-game-summary-${new Date().toISOString().split('T')[0]}.txt`;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                alert('Summary exported successfully!');
+            } catch (error) {
+                // Fallback: copy to clipboard
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(fullSummary).then(() => {
+                        alert('Summary copied to clipboard! You can paste it into a text file.');
+                    }).catch(() => {
+                        showSummaryModal(fullSummary);
+                    });
+                } else {
+                    showSummaryModal(fullSummary);
+                }
+            }
+        }
+
+        function showSummaryModal(summary) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-96 overflow-auto">
+                    <h3 class="text-lg font-semibold mb-4">Game Summary</h3>
+                    <pre class="w-full h-64 p-3 border border-gray-300 rounded text-sm font-mono overflow-auto">${summary}</pre>
+                    <div class="mt-4 flex justify-end space-x-2">
+                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Close</button>
+                        <button onclick="copyToClipboard('${summary.replace(/'/g, "\\'")}')" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Copy</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(() => {
+                alert('Failed to copy. Please copy manually from the text area.');
+            });
+        }
+
+        // Initialize the app
+        document.getElementById('clearDataBtn').addEventListener('click', clearAllData);
+        document.getElementById('exportDataBtn').addEventListener('click', exportData);
+        renderPlayers();
+        renderPayouts();
+    </script>
+</body>
+</html>
